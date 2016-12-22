@@ -1,5 +1,5 @@
-# Bat and Ball - AKA MyMonoGame4
+# Bat and Ball (and Dial)
 
-A simple UWP app written using MonoGame, that demonstrates a pong-like game using the Microsoft Dial.
+A simple UWP app written using MonoGame, that demonstrates a pong-like game using the Microsoft Dial as a controller.
 
-Only tested on a Surface Book.
+Only tested on a Surface Book so far.
