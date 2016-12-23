@@ -2,6 +2,8 @@
 
 A simple UWP app written using MonoGame, that demonstrates a pong-like game using the Microsoft Dial as a controller.
 
+![Bat and Ball](batball.png)
+
 Only tested on a Surface Book. A Dial is required to play the game at this time.
 
 You can find a more detailed write up on creating a MonoGame UWP app in accompanying blog posts:
