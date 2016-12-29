@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System;
 using System.Threading.Tasks;
 using Windows.Graphics.Display;
+using Microsoft.Xna.Framework.Input;
 
 namespace MyMonoGame4
 {
@@ -16,34 +17,43 @@ namespace MyMonoGame4
     /// </summary>
     public class Game1 : Game
     {
+        // Game constants, which you should experiment with.
+        const int SCREENEDGEOFFSET = 200;
+        const int SCREENTOPOFFSET = 200;
+        const int PADDLEOFFSET = 64;
+        const int BRICKHORIZONTALSPACING = 100;
+        const int BRICKVERTICALSPACING = 50;
+        const int NUMBEROFBRICKROWS = 10;
+
+        // MonoGame specific objects
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
 
+        // Our game objects
         SpriteClass ball;
         SpriteClass bat;
-        SpriteClass[] wall;
+        List<SpriteClass> wall;
 
+        // Special Microsoft Dial control objects
         Windows.UI.Input.RadialController _dial;
         Windows.UI.Input.RadialControllerMenuItem item0;
 
+        // Used to track screen size, as it will vary from device to device.
         float screenWidth;
         float screenHeight;
 
         public Game1()
         {
+            // Set up the MonoGame display
+
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
         }
 
-        /// <summary>
-        /// Allows the game to perform any initialization it needs to before starting to run.
-        /// This is where it can query for any required services and load any non-graphic
-        /// related content.  Calling base.Initialize will enumerate through any components
-        /// and initialize them as well.
-        /// </summary>
+
         protected override void Initialize()
         {
-          
+
 
             base.Initialize();
 
@@ -54,14 +64,13 @@ namespace MyMonoGame4
 
 
             // Take high density screens into account, such as Surface Pro
-             DisplayInformation d = DisplayInformation.GetForCurrentView();
+            DisplayInformation d = DisplayInformation.GetForCurrentView();
             screenHeight *= (float)d.RawPixelsPerViewPixel;
             screenWidth *= (float)d.RawPixelsPerViewPixel;
 
 
             // Set up the Dial Contoller to report rotation events
-          
- 
+
             RadialControllerSystemMenuItemKind[] default_items = { RadialControllerSystemMenuItemKind.Volume };
             RadialControllerConfiguration.GetForCurrentView().SetDefaultMenuItems(new List<RadialControllerSystemMenuItemKind>(default_items));
             _dial = Windows.UI.Input.RadialController.CreateForCurrentView();
@@ -71,39 +80,71 @@ namespace MyMonoGame4
             _dial.RotationChanged += _dial_RotationChanged;
             _dial.ButtonClicked += _dial_ButtonClicked;
 
+            // Add support for this app to the Dial control
             item0 = Windows.UI.Input.RadialControllerMenuItem.CreateFromKnownIcon("Bat and Ball", Windows.UI.Input.RadialControllerMenuKnownIcon.InkColor);
-
             AddItem();
 
-           
+            // Hide the mouse
+            this.IsMouseVisible = false;
+
+            // Create the rows of bricks that make up the wall
+            CreateBrickWall();
+
+        }
+
+        private void CreateBrickWall()
+        {
+            // Create the bricks that make up the wall
+            // The exact number of bricks depends on the width of the screen, so we use a List<> structure,
+            // which doesn't need to know in advance how big it needs to be.
+
+            wall = new List<SpriteClass>();
+   
+            for (float y = SCREENTOPOFFSET; y < SCREENTOPOFFSET + (NUMBEROFBRICKROWS * BRICKVERTICALSPACING) ; y += BRICKVERTICALSPACING)
+            {
+                for (float x = SCREENEDGEOFFSET; x < (screenWidth - SCREENEDGEOFFSET); x += BRICKHORIZONTALSPACING)
+                {
+                    SpriteClass brick = new SpriteClass(GraphicsDevice, "content/block.png");
+                    brick.isCircular = false;
+                    brick.Y = y;
+                    brick.X = x;
+                    wall.Add(brick);
+                }
+            }
         }
 
         private async Task AddItem()
         {
+            // Used when adding features to the Dial control
             _dial.Menu.Items.Add(item0);
             await Task.Delay(400);
             _dial.Menu.SelectMenuItem(this.item0);
-          
-
         }
+
         private void _dial_ButtonClicked(RadialController sender, RadialControllerButtonClickedEventArgs args)
         {
             // Start the ball moving when the Dial is clicked
 
+            StartThingsMoving();
+        }
+
+        private void StartThingsMoving()
+        {
+            // Called at very start of game to give the ball and bat initial speed and location
             ball.X = screenWidth / 2;
             ball.Y = screenHeight / 2;
             ball.DX = 512;
             ball.DY = 512;
 
             bat.X = screenWidth / 2;
-            bat.Y = screenHeight - 256;
+            bat.Y = screenHeight - PADDLEOFFSET;
         }
 
         private void _dial_RotationChanged(Windows.UI.Input.RadialController sender, Windows.UI.Input.RadialControllerRotationChangedEventArgs args)
         {
             // The user has rotated the dial, so move the bat accordingly.
             bat.X += (float)(args.RotationDeltaInDegrees * 16.0);
-            bat.Y = screenHeight - 256;
+            bat.Y = screenHeight - PADDLEOFFSET;
         }
 
         /// <summary>
@@ -121,24 +162,6 @@ namespace MyMonoGame4
             bat = new SpriteClass(GraphicsDevice, "content/bat.png");
             bat.isCircular = false;
 
-        
-         // Create the bricks that make up the wall
-
-            wall = new SpriteClass[12*27];
-
-            int i = 0;
-
-            for (float y = 200; y < 800; y += 50)
-            {
-                for (float x = 200; x < 2900; x += 100)
-                {
-                    wall[i] = new SpriteClass(GraphicsDevice, "content/block.png");
-                    wall[i].isCircular = false;
-                    wall[i].Y = y;
-                    wall[i].X = x;
-                    i++;
-                }
-            }
         }
 
         /// <summary>
@@ -157,7 +180,11 @@ namespace MyMonoGame4
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
-          
+
+            // Check for keys being pressed.
+
+            KeyboardHandler();
+
             // Bounce ball
 
             ball.X += ball.DX * (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -191,14 +218,31 @@ namespace MyMonoGame4
 
             // Check for hitting wall
 
-            for (int i = 0; i < wall.Length; i++)
-            {
-                if (wall[i].Collision(ball))
-                {
-                    ball.DY = -ball.DY;
-                    wall[i].Y = -100; // Simply push it out of the way, above the screen
-                }
+            foreach (SpriteClass brick in wall)
+            {       
+                    if (brick.Collision(ball))
+                    {
+                        ball.DY = -ball.DY;
+                        brick.Y = -100; // This value is only so we can remove it later.
+                    }
             }
+
+            // Now here comes bit of magic which goes through the entire collection of bricks
+            // removing those with the Y co-ordinate is -100. As a result, they 
+            // will no longer be drawn or tested for collisions.
+
+            // You might wonder, why not just use Remove(brick) in the test above,
+            // instead of assigning that -100 value. The reason is that you aren't
+            // allowed to change a structure such as a list while you are in a loop that
+            // is accessing each element of it. It would be like taking a ladder apart
+            // while you are still climbing it: it wouldn't end well.
+
+            wall.RemoveAll(delegate (SpriteClass brick)
+            {
+                return brick.Y == -100;
+            });
+
+
 
             base.Update(gameTime);
         }
@@ -217,19 +261,60 @@ namespace MyMonoGame4
 
             ball.Draw(spriteBatch);
             bat.Draw(spriteBatch);
-            int c = 0;
-            for (int i = 0; i < wall.Length; i++)
-            {
-                // Pick a new color every line
-                if (i % 54 == 0) c++;
-                if (wall[i].Y != -100)
-                wall[i].DrawColor(spriteBatch,c);
 
+
+            // Draw all the bricks, switching to a new color for each new line
+            int color = 0;
+            float oldY = 0;
+            foreach (SpriteClass brick in wall)
+            {
+                if (brick.Y != oldY)
+                {
+                    color++;
+                    if (color > 6) color = 1;
+                    oldY = brick.Y;
+                }
+                brick.DrawColor(spriteBatch, color);
             }
+
 
             spriteBatch.End();
 
             base.Draw(gameTime);
         }
+
+
+        void KeyboardHandler()
+        {
+
+            KeyboardState state = Keyboard.GetState();
+
+            // Quit the game if ESC is pressed.
+            if (state.IsKeyDown(Keys.Escape))
+            {
+                Exit();
+            }
+
+            // Move the paddle left and right
+            if (state.IsKeyDown(Keys.Left))
+            {
+                bat.X -=16;
+                bat.Y = screenHeight - PADDLEOFFSET;
+            }
+
+            if (state.IsKeyDown(Keys.Right))
+            {
+                bat.X += 16;
+                bat.Y = screenHeight - PADDLEOFFSET;
+            }
+
+            // Start the game when Space bar is pressed
+            if (state.IsKeyDown(Keys.Space))
+            {
+                StartThingsMoving();
+            }
+        }
+
     }
+
 }
