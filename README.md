@@ -4,7 +4,7 @@ A simple UWP app written using MonoGame, that demonstrates a pong-like game usin
 
 ![Bat and Ball](batball.png)
 
-Only tested on a Surface Book. A Dial is required to play the game at this time.
+The app detects the size of the screen, and adapts the display accordingly. A Microsoft Dial is supported, but you can also use the keyboard. Press Space and use the Cursor Left/Right keys!
 
 You can find a more detailed write up on creating a MonoGame UWP app in accompanying blog posts:
 
